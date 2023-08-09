@@ -2,62 +2,6 @@ interface NotifierInterface {
   send: () => void
 }
 
-class EmailNotification implements NotifierInterface {
-  message: string;
-  
-  constructor(message: string) {
-    this.message = message;
-  }
-  
-  send() {
-    console.log('Email was sent: ', this.message);
-  }
-}
-
-class SlackNotification implements NotifierInterface {
-  message: string;
-  
-  constructor(message: string) {
-    this.message = message;
-  }
-  
-  send() {
-    console.log('Slack notification was sent: ', this.message);
-  }
-}
-
-class TeleNotification implements NotifierInterface {
-  message: string;
-  
-  constructor(message: string) {
-    this.message = message;
-  }
-  
-  send() {
-    console.log('Tele notification was sent: ', this.message);
-  }
-}
-
-// class SlackEmailNotification implements NotificationInterface {
-//   message: string;
-  
-//   constructor(message: string) {
-//     this.message = message;
-//   }
-  
-//   send() {
-//     const emailNotification = new EmailNotification(this.message);
-//     emailNotification.send();
-
-//     const slackNotification = new SlackNotification(this.message);
-//     slackNotification.send();
-//   }
-// }
-
-interface NotifierDecorator {
-  core: NotifierDecorator | null,
-  notifier: NotifierInterface
-}
 
 // func (nd NotifierDecorator) Decorate(notifier Notifier) NotifierDecorator {
 // 	return NotifierDecorator{
@@ -70,18 +14,67 @@ interface NotifierDecorator {
 // 	return NotifierDecorator{notifier: notifier}
 // }
 
+class EmailNotification implements NotifierInterface {
+  message: string;
+  
+  constructor(message: string) {
+    this.message = message;
+  }
+  
+  send() {
+    console.log('Email was sent:', this.message);
+  }
+}
 
-class NewNotifierDecorator {
-  static create(notifier: NotifierInterface): NotifierDecorator {
-    return {
-      core: null,
-      notifier
-    };
+class SlackNotification implements NotifierInterface {
+  message: string;
+  
+  constructor(message: string) {
+    this.message = message;
+  }
+  
+  send() {
+    console.log('Slack notification was sent:', this.message);
+  }
+}
+
+class TeleNotification implements NotifierInterface {
+  message: string;
+  
+  constructor(message: string) {
+    this.message = message;
+  }
+  
+  send() {
+    console.log('Tele notification was sent:', this.message);
+  }
+}
+
+interface NotifierDecorator {
+  core: NotifierDecorator | null,
+  notifier: NotifierInterface,
+  decorate?: (nt: NotifierInterface) => NotifierDecorator
+}
+
+function decorate(stack: NotifierDecorator | null, notifier: NotifierInterface): NotifierDecorator {
+  return {
+    core: stack,
+    notifier,
+  };
+}
+
+class NotifierStack {
+  core: NotifierDecorator | null;
+  notifier: NotifierInterface;
+
+  constructor(core: NotifierDecorator | null, notifier: NotifierInterface) {
+    this.core = core;
+    this.notifier = notifier;
   }
 
   decorate(notifier: NotifierInterface): NotifierDecorator {
     return {
-      core: this.nd,
+      core: this,
       notifier
     } as NotifierDecorator;
   }
@@ -94,14 +87,8 @@ class NotificationService {
     this.nd = nd;
   }
 
-  // decorate(notifier: NotifierInterface): NotifierDecorator {
-  //   return {
-  //     core: this.nd,
-  //     notifier
-  //   } as NotifierDecorator;
-  // }
-
   send() {
+    console.log('Send');
     const nd = this.nd;
     nd.notifier.send();
 
@@ -114,15 +101,16 @@ class NotificationService {
 function main() {
   const message = 'Testing';
 
-  const notificationService = new NotificationService({
-    core: null,
-    notifier: new EmailNotification(message),
-  });
-  notificationService.decorate(new SlackNotification(message));
+  const notifierStack = new NotifierStack(null, new EmailNotification(message));
 
-  notificationService.decorate(new TeleNotification(message));
+  notifierStack.decorate(new SlackNotification(message));
 
-  notificationService.send();
+  console.log('notifierStack', notifierStack)
+
+
+  const notiService = new NotificationService(notifierStack);
+
+  notiService.send();
 }
 
 main();
